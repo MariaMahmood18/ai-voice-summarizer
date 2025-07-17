@@ -14,7 +14,13 @@ from transformers import pipeline
 import os
 
 # Load pretrained summarization model
-summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+summarizer = pipeline("summarization", model="philschmid/bart-large-cnn-samsum")
+
+
+# Models tried
+# 1. sshleifer/distilbart-cnn-12-6
+# 2. facebook/bart-large-cnn
+# 3. philschmid/bart-large-cnn-samsum
 
 # Create a function that takes text as input and performs summarization
 def summarize_text(transcript_path, max_length=120, min_length=30):

@@ -19,7 +19,7 @@ def main():
 
     # Step -2 [Summarization] -------------------------------------------------->
     summary, summary_path = summarize_text(transcript_path=transcript_path, 
-                                           max_length=50, 
+                                           max_length=120, 
                                            min_length=30)
 
 

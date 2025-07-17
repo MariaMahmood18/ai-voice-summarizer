@@ -5,6 +5,8 @@ transcriber.py
 This module handles audio transcription using OpenAI Whisper.
 It loads the Whisper model once and provides a function to convert an audio file (.wav, .mp3, etc.)
 into plain text transcription.
+It supports both file-based saving and lightweight in-memory transcription
+for deployment (e.g. Gradio, Streamlit, APIs).
 
 Usage:
     - Call transcribe_audio(audio_path) with the path to the audio file
