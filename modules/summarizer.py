@@ -1,68 +1,123 @@
 """
 summarizer.py
 -------------
-
-This module summarizes long text using Hugging Face's DistilBART model.
-Now enhanced to take a transcript file path, read the text, summarize it,
-and save the summary in a summary folder.
+This module generates summaries from transcripts using Hugging Face's BART model.
+Uses sentence-aware chunking, two-pass summarization, and basic cleanup for more readable summaries.
 
 Author: Maria Mahmood
 Date: July 2025
 """
 
-from transformers import pipeline
 import os
+import warnings
+import spacy
+import re
+from transformers import pipeline, AutoTokenizer
 
-# Load pretrained summarization model
-summarizer = pipeline("summarization", model="philschmid/bart-large-cnn-samsum")
+warnings.filterwarnings("ignore")
 
+# Load spaCy English model
+try:
+    nlp = spacy.load("en_core_web_sm")
+except OSError:
+    print("[INFO] spaCy model not found. Installing...")
+    os.system("python -m spacy download en_core_web_sm")
+    nlp = spacy.load("en_core_web_sm")
 
-# Models tried
-# 1. sshleifer/distilbart-cnn-12-6
-# 2. facebook/bart-large-cnn
-# 3. philschmid/bart-large-cnn-samsum
+# Initialize BART summarization pipeline
+model_name = "facebook/bart-large-cnn"
+summarizer = pipeline("summarization", model=model_name)
+tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-# Create a function that takes text as input and performs summarization
-def summarize_text(transcript_path, max_length=120, min_length=30):
-    """
-    Summarize the input text at trasncript path using the hugging face pre-trained transformer model and save it.
+def sentence_based_chunks(text, max_words=100):
+    doc = nlp(text)
+    sentences = [sent.text.strip() for sent in doc.sents]
 
-    Parameters:
-        transcript_path (str): The path to input text to summarize
-        max_length (int): Maximum tokens in output (default: 120)
-        min_length (int): Minimum tokens in output (default: 30)
+    chunks, current_chunk, current_len = [], [], 0
+    for sent in sentences:
+        word_len = len(sent.split())
+        if current_len + word_len <= max_words:
+            current_chunk.append(sent)
+            current_len += word_len
+        else:
+            chunks.append(" ".join(current_chunk))
+            current_chunk = [sent]
+            current_len = word_len
+    if current_chunk:
+        chunks.append(" ".join(current_chunk))
+    return chunks
 
-    Returns:
-        tuple:
-            summary (str): The summary of input text
-            summary_path (str): The path where the summary is saved
+def dynamic_summarize(chunk, min_length=30, ratio=0.25, max_cap=120):
+    input_len = len(chunk.split())
+    max_len = min(max(int(input_len * ratio), min_length), max_cap)
 
+    result = summarizer(chunk, max_length=max_len, min_length=min_length, do_sample=False)
+    summary = result[0]['summary_text']
+    return clean_summary(summary)
 
-    """
-    
+def clean_summary(text):
+    # Remove common issues
+    text = re.sub(r"\s+", " ", text)
+    text = re.sub(r"(\.\.\.|--)\s*", ".", text)
+    text = re.sub(r"\s*([.,!?])", r"\1", text)
+
+    # Remove repetitions or incomplete trailing clauses
+    sentences = [s.strip() for s in re.split(r'(?<=[.!?]) +', text)]
+    seen = set()
+    filtered = []
+    for s in sentences:
+        if len(s.split()) > 4 and s not in seen:
+            filtered.append(s)
+            seen.add(s)
+    return " ".join(filtered)
+
+def summarize_text(transcript_path, max_cap=120, min_length=30, two_pass=True):
     transcript_path = os.path.normpath(transcript_path)
-
-    # Load the transcript text from path
-    with open(transcript_path, "r") as f:
+    with open(transcript_path, "r", encoding="utf-8") as f:
         text = f.read()
 
-    # Summarize the text
-    summary = summarizer(text, 
-                         max_length=max_length, 
-                         min_length=min_length, 
-                         do_sample=False) # do_sample -> ensures every time same summary for a text is produced no randomness 
-    
-    summary_text = summary[0]["summary_text"]
+    word_count = len(text.split())
 
-    # Construct filename and path 
+    if word_count > 200:
+        chunks = sentence_based_chunks(text, max_words=120)
+        first_pass = []
+        for i, chunk in enumerate(chunks):
+            try:
+                summary = dynamic_summarize(chunk, min_length=min_length, ratio=0.25, max_cap=max_cap)
+                first_pass.append(summary)
+            except Exception as e:
+                print(f"[ERROR] First-pass summarization failed at chunk {i}: {e}")
+                first_pass.append("")
+
+        combined_summary = " ".join(first_pass)
+    else:
+        try:
+            combined_summary = dynamic_summarize(text, min_length=min_length, ratio=0.25, max_cap=max_cap)
+        except Exception as e:
+            print(f"[ERROR] Direct summarization failed: {e}")
+            combined_summary = "[Error in summarization]"
+
+    # Optional second-pass summarization
+    if two_pass:
+        tokenized_len = len(tokenizer.encode(combined_summary, truncation=False))
+        if tokenized_len > 1024:
+            try:
+                final_summary = dynamic_summarize(combined_summary, min_length=min_length, ratio=0.3, max_cap=max_cap)
+            except Exception as e:
+                print(f"[ERROR] Second-pass summarization failed: {e}")
+                final_summary = combined_summary
+        else:
+            final_summary = combined_summary
+    else:
+        final_summary = combined_summary
+
+    # Save to file
     summary_folder = "summary"
     os.makedirs(summary_folder, exist_ok=True)
     base_filename = os.path.basename(transcript_path).replace("_transcript.txt", "_summary.txt")
     summary_path = os.path.join(summary_folder, base_filename)
 
-    # Save the summary 
     with open(summary_path, "w", encoding="utf-8") as f:
-        f.write(summary_text)
-    
-    
-    return summary_text, summary_path
+        f.write(final_summary.strip())
+
+    return final_summary.strip(), summary_path

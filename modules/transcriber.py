@@ -26,6 +26,7 @@ import re
 # Load the whisper medium model for speech recognition
 model = whisper.load_model(name="medium")
 
+# --- Local/Desktop Function (Saves transcript to file) ---
 # Create a function that takes an audio file path and returns its transcrpts as text
 def transcribe_audio(audio_path, output_folder="transcripts"):
     """
