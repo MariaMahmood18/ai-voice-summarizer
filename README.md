@@ -1,11 +1,10 @@
-# AI Voice Summarizer 🎙️📝
-
-This is a simple AI-powered app that:
-
-- Transcribes audio (MP3/WAV) using OpenAI Whisper
-- Summarizes the transcript using BART model from Hugging Face
-- Built with Streamlit and deployable on Hugging Face Spaces
-
-## Features
-- Supports MP3, WAV, M4A
-- Returns full transcript and summarized version
+---
+title: AI Voice Summarizer
+emoji: 🗣️📄
+colorFrom: indigo
+colorTo: pink
+sdk: streamlit
+sdk_version: "1.32.0"
+app_file: app.py
+pinned: false
+---
