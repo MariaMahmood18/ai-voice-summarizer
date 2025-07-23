@@ -19,7 +19,7 @@ import whisper
 import os
 
 # Load the whisper medium model
-model = whisper.load_model(name="medium")
+model = whisper.load_model(name="base")
 
 def transcribe_audio(audio_path):
     """
