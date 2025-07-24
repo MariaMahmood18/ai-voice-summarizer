@@ -78,10 +78,3 @@ source venv/bin/activate   # macOS/Linux
 pip install -r requirements.txt
 ```
 
-###  Launch the App
-
-```bash
-streamlit run app.py
-```
-
-
