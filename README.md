@@ -17,6 +17,13 @@ AI Voice Summarizer is a simple and powerful Streamlit-based web app that conver
 
 ---
 
+## Deployment
+
+Try the app live on **Hugging Face Spaces**:  
+[https://huggingface.co/spaces/MariaMahmood/ai-voice-summarizer](https://huggingface.co/spaces/MariaMahmood/ai-voice-summarizer)
+
+---
+
 ## Demo
 
 🎬 [Watch Demo Video on YouTube](https://www.youtube.com/watch?v=xFNtoHJYJ98)
