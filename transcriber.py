@@ -31,14 +31,14 @@ def transcribe_audio(audio_path):
     Returns:
         transcript (str): The transcribed text
     """
-    
-    print(f"Transcribing {audio_path}...")
 
     # Normalize path for cross-platform compatibility
     audio_path = os.path.normpath(audio_path)
     audio_path = audio_path.encode('unicode_escape').decode()
 
-    # Check if file exists and is not empty
+    print(f"Transcribing {audio_path}...")
+
+    # Pre-checks
     if not os.path.exists(audio_path):
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
     if os.path.getsize(audio_path) == 0:
@@ -46,8 +46,20 @@ def transcribe_audio(audio_path):
 
     try:
         results = model.transcribe(audio_path)
-        transcript = results["text"]
+
+        transcript = results.get("text", "").strip()
+        if not transcript:
+            raise ValueError("Transcription returned empty text.")
+
         return transcript
+
+    except RuntimeError as e:
+        if "cannot reshape tensor" in str(e):
+            print("[ERROR] Likely corrupted or incompatible audio input.")
+        else:
+            print(f"[ERROR] RuntimeError during transcription: {e}")
+        raise RuntimeError("Transcription failed due to audio processing error.")
+
     except Exception as e:
         print(f"[ERROR] Whisper transcription failed: {e}")
         raise RuntimeError("Transcription failed. Please upload a valid audio file.")
